@@ -1,0 +1,137 @@
+----------------------------------------------------------------------------------
+-- Engineer: Sohaib Ghauri
+-- 
+-- Create Date:    20:04:40 09/02/2014  		
+-- Module Name:    fsm_New - Behavioral 
+-- Project Name: 	 Simple Combination Lock  Design
+ 
+-- Revision 0.01 - File Created
+
+----------------------------------------------------------------------------------
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.all;
+
+
+entity fsm_new is
+	 port ( CLK,RESET: in std_logic;
+				SW: in std_logic_vector(3 downto 0);
+				BTNL,BTNR : in std_logic;
+				LEDS : out std_logic_VECTOR(7 downto 0));
+			 
+end fsm_new;
+
+architecture Behavioral of fsm_new is
+--Declare variables and signals
+	type state_type is (ST0, ST1, ST2, ST3,ST4,ERR,CRT);
+	signal PRESENT_STATE, NEXT_STATE : state_type;
+	signal Q0_L,Q1_L,Q2_L,D_BTNL : std_logic := '0';
+	signal Q0_R,Q1_R,Q2_R,D_BTNR : std_logic := '0';
+	
+begin
+
+	sync_proc: process (CLK,NEXT_STATE,RESET)
+	begin
+		if (RESET = '1') then
+			PRESENT_STATE <= ST0;
+		elsif (CLK'event and CLK = '1') then
+			PRESENT_STATE <= NEXT_STATE;
+		end if;
+	end process sync_proc;
+	
+	comb_proc: process(PRESENT_STATE, SW,D_BTNL,D_BTNR)
+	begin
+		case PRESENT_STATE is
+			when ST0 =>
+				if (D_BTNR ='1') then
+					NEXT_STATE <= ST1;
+				else
+					NEXT_STATE <= ST0;
+				end if;
+			when ST1 =>
+				if (D_BTNL = '1') then
+					if (SW = "0001") then
+						NEXT_STATE <= ST2;
+					else
+						NEXT_STATE <= ERR;
+					end if;
+				else
+					NEXT_STATE <= ST1;
+				end if;
+			when ST2 =>
+				if (D_BTNL ='1') then
+					if (SW = "0010") then
+						NEXT_STATE <= ST3;
+					else
+						NEXT_STATE <= ERR;
+					end if;
+				else
+					NEXT_STATE <= ST2;
+				end if;
+			when ST3 =>
+				if (D_BTNL ='1') then
+					if (SW = "0100") then
+						NEXT_STATE <= ST4;
+					else
+						NEXT_STATE <= ERR;
+					end if;
+				else
+					NEXT_STATE <= ST3;
+				end if;
+			when ST4 =>
+				if (D_BTNL ='1') then
+					if (SW = "1000") then
+						NEXT_STATE <= CRT;
+					else
+						NEXT_STATE <= ERR;
+					end if;
+				else
+					NEXT_STATE <= ST4;
+				end if;
+			when ERR =>
+				if (D_BTNL ='1') then
+					NEXT_STATE <= ST0;
+				else 
+					NEXT_STATE <= ERR;
+				end if;
+			when CRT =>
+				if (D_BTNL ='1') then
+					NEXT_STATE <= ST0;
+				else 
+					NEXT_STATE <= CRT;
+				end if;
+			when others =>
+				NEXT_STATE <= ST1;
+		end case;
+	end process;
+	
+	debounce:process(CLK,BTNL,BTNR)
+	begin
+		if (CLK'event and CLK = '1') then
+		Q0_L <= BTNL;
+		Q1_L <= Q0_L;
+		Q2_L <= Q1_L;
+		
+		Q0_R <= BTNR;
+		Q1_R <= Q0_R;
+		Q2_R <= Q1_R;
+		end if;
+	end process;
+	
+	D_BTNL <= Q0_L and Q1_L and (not Q2_L);
+	D_BTNR <= Q0_R and Q1_R and (not Q2_R);	
+
+	
+	with PRESENT_STATE select
+		LEDS <= X"00" when ST0,
+			     X"01" when ST1,
+				  X"02" when ST2,
+			     X"03" when ST3,
+			     X"04" when ST4,
+			     X"FF" when CRT,
+			     X"00" when ERR,
+			     X"00" when others;
+				  
+				  
+end Behavioral;
+
